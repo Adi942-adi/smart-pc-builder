@@ -1,10 +1,10 @@
-# PCPro Builder
+# Smart PC Builder
 
-AI-assisted PC build optimizer that turns natural-language requirements into compatible PC part lists.
+AI-assisted PC build optimizer that parses natural-language requirements, checks compatibility, compares parts, saves builds, and exports shareable PC configurations.
 
 ## Features
 
-- Parses requests like `gaming PC under ₹80,000 with RTX GPU and 32GB RAM`
+- Parses requests like `gaming PC under Rs 80,000 with RTX GPU and 32GB RAM`
 - Optimizes compatible CPU, GPU, motherboard, RAM, storage, PSU, case, and cooler combinations
 - Checks socket, memory type, PSU headroom, case clearance, and cooler support
 - Saves builds locally with `localStorage`
