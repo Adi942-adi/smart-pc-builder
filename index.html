@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PCPro Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="hdr">
+      <div class="logo">
+        <div class="logo-box">PC</div>
+        <div>
+          <div class="logo-name">PC<span>Pro</span> Builder</div>
+          <div class="data-note" id="dataNote">Component data loading</div>
+        </div>
+      </div>
+      <div class="hdr-right">
+        <div class="badge badge-green">SMART OPTIMIZER</div>
+        <div class="badge badge-blue" id="saveCount">0 SAVED</div>
+      </div>
+    </header>
+
+    <main class="body">
+      <aside class="lp">
+        <section>
+          <div class="sec-lbl">Describe your build</div>
+          <div class="nl-wrap">
+            <textarea class="nl" id="nlIn" placeholder="e.g. Gaming PC under ₹80,000 with RTX GPU, 32GB RAM, Wi-Fi and white case"></textarea>
+            <div class="chips">
+              <button class="chip" data-query="Gaming PC under ₹80,000 with RTX GPU">Gaming ₹80K</button>
+              <button class="chip" data-query="Video editing workstation under ₹1.2 lakh with 32GB RAM">Editing</button>
+              <button class="chip" data-query="Budget PC under ₹40,000 with Wi-Fi">Budget build</button>
+              <button class="chip" data-query="3D rendering workstation with 64GB RAM and NVIDIA CUDA">Workstation</button>
+            </div>
+          </div>
+          <div class="ai-detect" id="aiDetect">Type a request or use a chip, then generate.</div>
+        </section>
+
+        <section>
+          <div class="sec-lbl">Budget</div>
+          <div class="budget-disp">
+            <span class="bnum" id="bdisplay">₹80,000</span>
+            <span class="tiny-muted">max spend</span>
+          </div>
+          <input type="range" class="bslide" id="bslider" min="20000" max="300000" value="80000" step="5000">
+          <div class="range-labels">
+            <span>₹20K</span>
+            <span>₹3L</span>
+          </div>
+        </section>
+
+        <section>
+          <div class="sec-lbl">Purpose</div>
+          <div class="purpose-g" id="purpGrid">
+            <button class="pc on" data-purpose="gaming"><span class="pi">🎮</span><span class="pn">Gaming</span><span class="ps">GPU-first</span></button>
+            <button class="pc" data-purpose="editing"><span class="pi">🎬</span><span class="pn">Editing</span><span class="ps">CPU + RAM</span></button>
+            <button class="pc" data-purpose="workstation"><span class="pi">⚙️</span><span class="pn">Workstation</span><span class="ps">Multi-thread</span></button>
+            <button class="pc" data-purpose="budget"><span class="pi">💡</span><span class="pn">Budget</span><span class="ps">Value-first</span></button>
+          </div>
+        </section>
+
+        <section>
+          <div class="sec-lbl">CPU Brand Preference</div>
+          <div class="brand-toggle">
+            <button class="brand-btn amd-on" id="btnAMD" data-brand="amd">AMD</button>
+            <button class="brand-btn" id="btnIntel" data-brand="intel">Intel</button>
+          </div>
+          <div class="brand-note" id="brandNote">Ryzen platforms prioritized</div>
+        </section>
+
+        <section>
+          <div class="sec-lbl">Extra Filters</div>
+          <div class="filter-grid">
+            <label class="filter-check"><input type="checkbox" id="wifiPref"> Wi-Fi</label>
+            <label class="filter-check"><input type="checkbox" id="rgbPref"> RGB</label>
+            <label class="filter-check"><input type="checkbox" id="whitePref"> White</label>
+            <label class="filter-check"><input type="checkbox" id="futurePref"> Upgrade path</label>
+          </div>
+        </section>
+
+        <button class="gen-btn" id="genBtn">Generate Build ↗</button>
+        <button class="save-btn" id="saveBtn" hidden>+ Save This Build</button>
+
+        <section class="share-tools" id="shareTools" hidden>
+          <button class="tool-btn" id="copyBtn">Copy summary</button>
+          <button class="tool-btn" id="shareBtn">Share URL</button>
+          <button class="tool-btn" id="whatsBtn">WhatsApp</button>
+          <button class="tool-btn" id="printBtn">Print / PDF</button>
+        </section>
+      </aside>
+
+      <section class="rp" id="rp">
+        <div class="empty" id="emptyState">
+          <div class="empty-ic">🖥️</div>
+          <div class="empty-tx">Set your requirements<br>and generate a build</div>
+        </div>
+        <div id="buildArea" hidden></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
