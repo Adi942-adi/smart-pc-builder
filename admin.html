@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart PC Builder Price Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <header class="admin-head">
+      <div>
+        <div class="eyebrow">LOCAL ADMIN</div>
+        <h1>Price Editor</h1>
+        <p>Update local prices without editing JavaScript. Export when you want to replace `prices.json` in the repo.</p>
+      </div>
+      <div class="admin-actions">
+        <a class="tool-btn" href="index.html">Back to app</a>
+        <button class="tool-btn" id="savePrices">Save locally</button>
+        <button class="tool-btn" id="resetPrices">Reset local edits</button>
+        <button class="tool-btn" id="exportPrices">Export prices.json</button>
+      </div>
+    </header>
+    <section id="priceEditor" class="price-editor"></section>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

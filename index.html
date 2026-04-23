@@ -74,12 +74,49 @@
         </section>
 
         <section>
-          <div class="sec-lbl">Extra Filters</div>
-          <div class="filter-grid">
-            <label class="filter-check"><input type="checkbox" id="wifiPref"> Wi-Fi</label>
-            <label class="filter-check"><input type="checkbox" id="rgbPref"> RGB</label>
-            <label class="filter-check"><input type="checkbox" id="whitePref"> White</label>
-            <label class="filter-check"><input type="checkbox" id="futurePref"> Upgrade path</label>
+          <div class="sec-lbl">Manual Filters</div>
+          <div class="control-stack">
+            <label class="filter-field">GPU
+              <select id="gpuMakerPref">
+                <option value="">Any</option>
+                <option value="nvidia">NVIDIA</option>
+                <option value="amd">AMD</option>
+              </select>
+            </label>
+            <label class="filter-field">RAM
+              <select id="ramPref">
+                <option value="">Auto</option>
+                <option value="16">16GB+</option>
+                <option value="32">32GB+</option>
+                <option value="64">64GB+</option>
+              </select>
+            </label>
+            <label class="filter-field">Storage
+              <select id="storagePref">
+                <option value="">Auto</option>
+                <option value="500">500GB+</option>
+                <option value="1000">1TB+</option>
+                <option value="2000">2TB+</option>
+              </select>
+            </label>
+            <label class="filter-field">Case
+              <select id="colorPref">
+                <option value="">Any color</option>
+                <option value="black">Black</option>
+                <option value="white">White</option>
+              </select>
+            </label>
+            <label class="filter-field">Lighting
+              <select id="rgbModePref">
+                <option value="">Any</option>
+                <option value="true">RGB</option>
+                <option value="false">No RGB</option>
+              </select>
+            </label>
+            <div class="filter-grid">
+              <label class="filter-check"><input type="checkbox" id="wifiPref"> Wi-Fi</label>
+              <label class="filter-check"><input type="checkbox" id="futurePref"> Upgrade path</label>
+            </div>
           </div>
         </section>
 

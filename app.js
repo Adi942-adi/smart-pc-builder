@@ -1,4 +1,6 @@
 const STORAGE_KEY = "pcpro.savedBuilds.v3";
+const PRICE_OVERRIDE_KEY = "pcpro.priceOverrides.v1";
+const COMPARE_KEY = "pcpro.compareSelection.v1";
 const BUILD_KEYS = [
   ["cpu", "CPU"],
   ["gpu", "GPU"],
@@ -21,6 +23,24 @@ const COLLECTION_BY_CATEGORY = {
   cooler: "coolers"
 };
 
+const CATEGORY_IMAGES = {
+  cpu: "https://commons.wikimedia.org/wiki/Special:FilePath/Intel_CPU_Core_i7_6700K_Skylake_perspective.jpg?width=220",
+  gpu: "https://commons.wikimedia.org/wiki/Special:FilePath/NVIDIA_GeForce_RTX_2080_founders_edition_2018_front.png?width=220",
+  motherboard: "https://commons.wikimedia.org/wiki/Special:FilePath/ASRock_K7VT4A_Pro_Mainboard_Labeled_English.svg?width=220",
+  ram: "https://commons.wikimedia.org/wiki/Special:FilePath/Generic_DDR4_RAM.jpg?width=220",
+  storage: "https://commons.wikimedia.org/wiki/Special:FilePath/Samsung_960_EVO_SSD.jpg?width=220",
+  psu: "https://commons.wikimedia.org/wiki/Special:FilePath/ATX_power_supply_interior-1000px_transparent.png?width=220",
+  case: "https://commons.wikimedia.org/wiki/Special:FilePath/Computer_case_2012.png?width=220",
+  cooler: "https://commons.wikimedia.org/wiki/Special:FilePath/Noctua_NH-D15_SE-AM4_and_NH-U12S_SE-AM4_CPU_Coolers.jpg?width=220"
+};
+
+const RETAILERS = [
+  ["Amazon", query => `https://www.amazon.in/s?k=${query}`],
+  ["MDComputers", query => `https://mdcomputers.in/index.php?route=product/search&search=${query}`],
+  ["Vedant", query => `https://www.vedantcomputers.com/index.php?route=product/search&search=${query}`],
+  ["PrimeABGB", query => `https://www.primeabgb.com/?s=${query}&post_type=product`]
+];
+
 const state = {
   budget: 80000,
   purpose: "gaming",
@@ -42,6 +62,8 @@ const state = {
   },
   savedBuilds: [],
   currentBuild: null,
+  compareA: null,
+  compareB: null,
   chartInst: null
 };
 
@@ -49,12 +71,50 @@ const $ = id => document.getElementById(id);
 const money = value => "₹" + Math.round(value).toLocaleString("en-IN");
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const clone = value => JSON.parse(JSON.stringify(value));
+const parseOptionalInt = value => value ? parseInt(value, 10) : null;
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", bootstrap);
+
+async function bootstrap(){
+  applyPriceMap();
+  await loadPriceData();
+  init();
+}
+
+async function loadPriceData(){
+  let loaded = null;
+  if(typeof fetch === "function" && location.protocol !== "file:"){
+    try{
+      const response = await fetch("prices.json", {cache:"no-store"});
+      if(response.ok) loaded = await response.json();
+    }catch{
+      loaded = null;
+    }
+  }
+  if(loaded) applyPriceMap(loaded);
+  try{
+    const local = JSON.parse(localStorage.getItem(PRICE_OVERRIDE_KEY) || "null");
+    if(local) applyPriceMap(local);
+  }catch{
+    // Ignore malformed local price edits and keep packaged prices.
+  }
+}
+
+function applyPriceMap(priceData){
+  const table = priceData?.prices || priceData || {};
+  for(const [collection, items] of Object.entries(COMPONENTS)){
+    if(!Array.isArray(items)) continue;
+    for(const item of items){
+      const override = table[collection]?.[item.id];
+      item.price = Number.isFinite(Number(override)) ? Number(override) : item.defaultPrice || item.price || 0;
+    }
+  }
+}
 
 function init(){
   $("dataNote").textContent = `Component data last updated ${DATA_LAST_UPDATED}`;
   state.savedBuilds = loadSavedBuilds();
+  loadCompareSelection();
   updateSaveCount();
   bindEvents();
   updateBudget(state.budget);
@@ -91,7 +151,7 @@ function bindEvents(){
   document.querySelectorAll("[data-brand]").forEach(btn => {
     btn.addEventListener("click", () => setBrand(btn.dataset.brand));
   });
-  ["wifiPref","rgbPref","whitePref","futurePref"].forEach(id => {
+  ["wifiPref","futurePref","gpuMakerPref","ramPref","storagePref","colorPref","rgbModePref"].forEach(id => {
     $(id).addEventListener("change", () => {
       readFilterControls();
       updateAiPreview();
@@ -127,10 +187,14 @@ function setBrand(value){
 }
 
 function readFilterControls(){
+  state.prefs.gpuMaker = $("gpuMakerPref").value || null;
+  state.prefs.ramMin = parseOptionalInt($("ramPref").value);
+  state.prefs.storageMin = parseOptionalInt($("storagePref").value);
+  state.prefs.color = $("colorPref").value || null;
+  state.prefs.colorScope = state.prefs.color ? "case" : null;
+  const rgbValue = $("rgbModePref").value;
+  state.prefs.rgb = rgbValue === "" ? null : rgbValue === "true";
   state.prefs.wifi = $("wifiPref").checked;
-  state.prefs.rgb = $("rgbPref").checked ? true : state.prefs.rgb === false ? false : null;
-  state.prefs.color = $("whitePref").checked ? "white" : state.prefs.color === "white" ? null : state.prefs.color;
-  state.prefs.colorScope = $("whitePref").checked ? "theme" : state.prefs.color ? state.prefs.colorScope : null;
   state.prefs.futureProof = $("futurePref").checked;
 }
 
@@ -138,9 +202,12 @@ function syncControls(){
   updateBudget(state.budget);
   setPurpose(state.purpose);
   setBrand(state.brand);
+  $("gpuMakerPref").value = state.prefs.gpuMaker || "";
+  $("ramPref").value = state.prefs.ramMin ? String(state.prefs.ramMin) : "";
+  $("storagePref").value = state.prefs.storageMin ? String(state.prefs.storageMin) : "";
+  $("colorPref").value = state.prefs.color || "";
+  $("rgbModePref").value = state.prefs.rgb === null || state.prefs.rgb === undefined ? "" : String(state.prefs.rgb);
   $("wifiPref").checked = !!state.prefs.wifi;
-  $("rgbPref").checked = state.prefs.rgb === true;
-  $("whitePref").checked = state.prefs.color === "white";
   $("futurePref").checked = !!state.prefs.futureProof;
 }
 
@@ -560,12 +627,16 @@ function renderBuild(){
   `).join("");
   const rows = BUILD_KEYS.map(([key, label], i) => {
     const part = build.data[key];
+    const note = optimizerNote(key, part, build);
     return `
       <div class="comp-row si" style="animation-delay:${0.03 * i}s">
+        <div class="part-thumb"><img src="${imageUrlFor(key, part)}" alt="${escapeHtml(part.name)}"></div>
         <div class="ctype">${label}</div>
         <div>
           <div class="cname">${escapeHtml(part.name)}</div>
           <div class="cspec">${escapeHtml(componentSpec(key, part))}</div>
+          <div class="optimizer-note">${escapeHtml(note)}</div>
+          <div class="retail-links">${renderRetailerLinks(part)}</div>
         </div>
         <button class="swap-btn" data-swap="${key}">swap</button>
         <div class="cprice">${money(part.price)}</div>
@@ -589,6 +660,8 @@ function renderBuild(){
     </div>
 
     <div class="compat-list">${checks}</div>
+
+    ${renderPrintSheet(build)}
 
     <div class="tab-bar si">
       <button class="tb on" data-tab="comps">Components</button>
@@ -632,6 +705,24 @@ function renderChartShell(build){
   return `<div class="legend-row">${legend}</div><div class="chart-wrap"><canvas id="budgetChart">Budget breakdown by component.</canvas></div>`;
 }
 
+function renderPrintSheet(build){
+  return `
+    <section class="print-sheet">
+      <h1>${escapeHtml(build.label)}</h1>
+      <p>Budget ${money(build.budget)} · Total ${money(build.total)} · Score ${build.performance.overall}/100 · Estimated draw ${build.wattage}W</p>
+      <table>
+        <thead><tr><th>Part</th><th>Selection</th><th>Reason</th><th>Price</th></tr></thead>
+        <tbody>
+          ${BUILD_KEYS.map(([key, label]) => {
+            const part = build.data[key];
+            return `<tr><td>${label}</td><td>${escapeHtml(part.name)}</td><td>${escapeHtml(optimizerNote(key, part, build))}</td><td>${money(part.price)}</td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
 function renderPerformance(build){
   const perf = build.performance;
   const rows = [
@@ -646,17 +737,32 @@ function renderPerformance(build){
     </div>
   `).join("");
 
-  const metrics = build.purpose === "gaming"
-    ? [
+  let metrics;
+  if(build.purpose === "gaming"){
+    metrics = [
       [`${fpsEstimate(build, "1080p")}+`, "FPS 1080p", "var(--acc)"],
       [`${fpsEstimate(build, "1440p")}+`, "FPS 1440p", "var(--blue)"],
       [build.performance.gpu > 82 ? `${fpsEstimate(build, "4K")}+` : "—", "FPS 4K", "var(--orange)"]
-    ]
-    : [
+    ];
+  }else if(build.purpose === "editing"){
+    metrics = [
+      [`${timelineRating(build)}`, "4K timeline", "var(--acc)"],
+      [`${exportScore(build)}x`, "Export score", "var(--blue)"],
+      [`${renderScore(build)}/100`, "Render score", "var(--orange)"]
+    ];
+  }else if(build.purpose === "workstation"){
+    metrics = [
+      [build.data.gpu.cuda ? "CUDA" : "OpenCL", "GPU compute", "var(--acc)"],
+      [`${build.data.gpu.vram}GB`, "VRAM", "var(--blue)"],
+      [`${build.data.cpu.cores} cores`, "Multicore", "var(--orange)"]
+    ];
+  }else{
+    metrics = [
       [build.data.ram.capacity + "GB", "RAM buffer", "var(--acc)"],
       [build.data.cpu.cores + " cores", "CPU threads", "var(--blue)"],
-      [formatStorage(build.data.storage.capacity), "Project storage", "var(--orange)"]
+      [formatStorage(build.data.storage.capacity), "Storage", "var(--orange)"]
     ];
+  }
 
   return `
     <div style="margin-bottom:16px">${rows}</div>
@@ -898,6 +1004,9 @@ function saveBuild(){
 
 function deleteSave(id){
   state.savedBuilds = state.savedBuilds.filter(build => build.id !== id);
+  if(state.compareA === id) state.compareA = null;
+  if(state.compareB === id) state.compareB = null;
+  persistCompareSelection();
   persistSavedBuilds();
   updateSaveCount();
   renderCompareArea();
@@ -937,10 +1046,16 @@ function renderCompareArea(){
 
   let compareHtml = "";
   if(state.savedBuilds.length >= 2){
-    const b1 = state.savedBuilds[state.savedBuilds.length - 2];
-    const b2 = state.savedBuilds[state.savedBuilds.length - 1];
+    ensureCompareSelection();
+    const b1 = state.savedBuilds.find(build => build.id === state.compareA) || state.savedBuilds[state.savedBuilds.length - 2];
+    const b2 = state.savedBuilds.find(build => build.id === state.compareB) || state.savedBuilds[state.savedBuilds.length - 1];
+    const options = state.savedBuilds.map(build => `<option value="${build.id}">${escapeHtml(build.label)} · ${money(build.total)}</option>`).join("");
     compareHtml = `
       <div class="eyebrow" style="margin:14px 0 8px">SIDE-BY-SIDE COMPARISON</div>
+      <div class="compare-selectors">
+        <label class="filter-field">Build A<select id="compareA">${options}</select></label>
+        <label class="filter-field">Build B<select id="compareB">${options}</select></label>
+      </div>
       <div class="compare-grid">
         ${renderCompareColumn(b1, b2)}
         ${renderCompareColumn(b2, b1)}
@@ -967,6 +1082,35 @@ function renderCompareArea(){
       deleteSave(parseInt(btn.dataset.deleteSave, 10));
     });
   });
+  const compareA = $("compareA");
+  const compareB = $("compareB");
+  if(compareA && compareB){
+    compareA.value = String(state.compareA);
+    compareB.value = String(state.compareB);
+    compareA.addEventListener("change", () => {
+      state.compareA = parseInt(compareA.value, 10);
+      if(state.compareA === state.compareB) state.compareB = firstDifferentSavedId(state.compareA);
+      persistCompareSelection();
+      renderCompareArea();
+    });
+    compareB.addEventListener("change", () => {
+      state.compareB = parseInt(compareB.value, 10);
+      if(state.compareA === state.compareB) state.compareA = firstDifferentSavedId(state.compareB);
+      persistCompareSelection();
+      renderCompareArea();
+    });
+  }
+}
+
+function ensureCompareSelection(){
+  const ids = state.savedBuilds.map(build => build.id);
+  if(!ids.includes(state.compareA)) state.compareA = ids[Math.max(0, ids.length - 2)];
+  if(!ids.includes(state.compareB) || state.compareB === state.compareA) state.compareB = ids[ids.length - 1] === state.compareA ? ids[0] : ids[ids.length - 1];
+  persistCompareSelection();
+}
+
+function firstDifferentSavedId(id){
+  return state.savedBuilds.find(build => build.id !== id)?.id || id;
 }
 
 function renderCompareColumn(build, opponent){
@@ -997,6 +1141,21 @@ function loadSavedBuilds(){
 
 function persistSavedBuilds(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.savedBuilds.slice(-20)));
+}
+
+function loadCompareSelection(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(COMPARE_KEY) || "null");
+    state.compareA = saved?.a || null;
+    state.compareB = saved?.b || null;
+  }catch{
+    state.compareA = null;
+    state.compareB = null;
+  }
+}
+
+function persistCompareSelection(){
+  localStorage.setItem(COMPARE_KEY, JSON.stringify({a:state.compareA, b:state.compareB}));
 }
 
 function updateSaveCount(){
@@ -1073,6 +1232,50 @@ function findComponentById(category, id){
   return collection?.find(item => item.id === id);
 }
 
+function imageUrlFor(category, part){
+  return part.image || CATEGORY_IMAGES[category] || CATEGORY_IMAGES.case;
+}
+
+function renderRetailerLinks(part){
+  const query = encodeURIComponent(part.name);
+  return RETAILERS.map(([name, buildUrl]) => `<a href="${buildUrl(query)}" target="_blank" rel="noopener noreferrer">${name}</a>`).join("");
+}
+
+function optimizerNote(key, part, build){
+  const prefs = build.prefs || {};
+  if(key === "gpu"){
+    if(prefs.rtx && part.rtx) return "RTX selected because the request asked for NVIDIA/RTX features.";
+    if(prefs.gpuMaker && part.maker === prefs.gpuMaker) return `${part.maker.toUpperCase()} GPU matched the manual GPU brand filter.`;
+    return build.purpose === "gaming" ? "GPU received the highest optimizer weight for gaming FPS." : "GPU chosen for acceleration while preserving CPU and RAM budget.";
+  }
+  if(key === "ram"){
+    if(prefs.ramMin && part.capacity >= prefs.ramMin) return `${part.capacity}GB RAM selected to satisfy the ${prefs.ramMin}GB minimum.`;
+    return build.purpose === "editing" || build.purpose === "workstation" ? `${part.capacity}GB RAM protects heavier timelines and project files.` : "RAM picked for the best capacity-to-price balance.";
+  }
+  if(key === "psu"){
+    const headroom = Math.round(part.watts / build.wattage * 100 - 100);
+    return `${part.watts}W PSU selected for about ${headroom}% headroom over estimated draw.`;
+  }
+  if(key === "cpu"){
+    return `${part.cores} cores balanced ${build.purpose} performance against the total budget.`;
+  }
+  if(key === "motherboard"){
+    return part.wifi ? "Wi-Fi board selected while matching socket and memory type." : "Board selected for socket, memory, and value compatibility.";
+  }
+  if(key === "storage"){
+    if(prefs.storageMin && part.capacity >= prefs.storageMin) return `${formatStorage(part.capacity)} storage satisfies the requested minimum.`;
+    return "NVMe storage selected for a fast boot drive and responsive app/game loading.";
+  }
+  if(key === "case"){
+    if(prefs.color && part.color === prefs.color) return `${title(part.color)} case selected from the case color filter.`;
+    return "Case selected for motherboard fit, GPU clearance, and airflow value.";
+  }
+  if(key === "cooler"){
+    return part.type === "aio" ? "AIO cooler selected for sustained high-load thermal headroom." : "Cooler selected to fit the case and handle CPU wattage.";
+  }
+  return "Selected by the optimizer for compatibility and value.";
+}
+
 async function copyText(text, success){
   try{
     await navigator.clipboard.writeText(text);
@@ -1139,6 +1342,23 @@ function fpsEstimate(build, resolution){
   if(resolution === "1080p") return Math.max(45, Math.round(base * 1.45));
   if(resolution === "1440p") return Math.max(30, Math.round(base * 1.02));
   return Math.max(25, Math.round(base * 0.62));
+}
+
+function timelineRating(build){
+  const score = build.performance.cpu * 0.35 + build.performance.gpu * 0.25 + build.performance.memory * 0.25 + build.performance.storage * 0.15;
+  if(score >= 90) return "8K ready";
+  if(score >= 75) return "Smooth";
+  if(score >= 60) return "Proxy safe";
+  return "Basic";
+}
+
+function exportScore(build){
+  const score = (build.performance.cpu * 0.55 + build.performance.gpu * 0.35 + build.performance.storage * 0.10) / 25;
+  return score.toFixed(1);
+}
+
+function renderScore(build){
+  return Math.round(build.performance.cpu * 0.55 + build.performance.gpu * 0.30 + build.performance.memory * 0.15);
 }
 
 function title(text){
